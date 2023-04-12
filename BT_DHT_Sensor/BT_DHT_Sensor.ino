@@ -1,24 +1,86 @@
+#include "BluetoothSerial.h"
+
+const char *pin = "1234"; 
+
+String device_name = "ESP32-BT-Slave";
+
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
+
+#if !defined(CONFIG_BT_SPP_ENABLED)
+#error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
+#endif
+
+BluetoothSerial SerialBT;
+
+#include <DHT.h>
+
+#define DHTPIN 13
+
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
 
 
 
-int val =0;
+
 
 
 void setup() {
-  Serial.begin(9600);
-  
-  pinMode(12,OUTPUT);
+  Serial.begin(115200);
+  SerialBT.begin(device_name); //Bluetooth device name
+  Serial.printf("The device with name \"%s\" is started.\nNow you can pair it with Bluetooth!\n", device_name.c_str());
  
+  #ifdef USE_PIN
+    SerialBT.setPin(pin);
+    Serial.println("Using PIN");
+  #endif
+
+  dht.begin();
 }
 
 void loop() {
 
-  val = analogRead(13); // 가변저항으로부터 아날로그 신호를 받을 변수를 선언해준다.
-  Serial.println(val); 
-  val = map(val, 0, 1023, 0, 255); // val의 최댓값을 1023에서 255로 매핑해준다. 
-   analogWrite(12, val); // 보드에서 아날로그로 쓸수있는 11,10,9,6,5,3번핀(물결표시)중에서 하나를 선택하면 된다.
+  
+
+    float  t = dht.readTemperature(); //온도값을 대입
+
+    float  h = dht.readHumidity();   //습도값을 대입
+
+    
     
 
+  if(Serial.available()){
+    SerialBT.write(Serial.read());
+  }
   
-   
+  
+  if (SerialBT.available()) {
+    
+    char txt = SerialBT.read();
+    if(txt == 't'){
+       SerialBT.print("Temperture: ");
+
+       SerialBT.print(t);
+
+       SerialBT.print(" C ");
+       SerialBT.println("");
+
+       
+    } 
+    else if(txt=='h'){
+    SerialBT.print("Humidity: ");
+
+    SerialBT.print(h);
+
+    SerialBT.print(" %");
+    SerialBT.println("");
+    
+    }
+
+    
+  }
+  
+  delay(20);
 }
